@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lap 計數器</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 30px 15px;
+      background: #f3f4f6;
+      font-family: Arial, "Microsoft JhengHei", sans-serif;
+    }
+
+    .counter {
+      width: 100%;
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 30px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+      text-align: center;
+    }
+
+    h1 {
+      margin-top: 0;
+      color: #333;
+    }
+
+    .count {
+      font-size: 80px;
+      font-weight: bold;
+      margin: 20px 0;
+      color: #111827;
+    }
+
+    .setting {
+      margin-bottom: 25px;
+    }
+
+    .setting label {
+      display: block;
+      margin-bottom: 8px;
+      color: #555;
+    }
+
+    .setting input {
+      width: 120px;
+      padding: 10px;
+      font-size: 20px;
+      text-align: center;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 15px 30px;
+      font-size: 26px;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+
+    button:active {
+      transform: scale(0.95);
+    }
+
+    .minus {
+      background: #ef4444;
+      color: white;
+    }
+
+    .plus {
+      background: #22c55e;
+      color: white;
+    }
+
+    .reset {
+      background: #6b7280;
+      color: white;
+      font-size: 16px;
+      margin-top: 20px;
+      width: 100%;
+    }
+
+    /* Lap 區域 */
+    .lap-section {
+      margin-top: 30px;
+      text-align: left;
+    }
+
+    .lap-section h2 {
+      font-size: 20px;
+      margin-bottom: 15px;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 10px;
+    }
+
+    .lap-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .lap {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-left: 5px solid #22c55e;
+      border-radius: 10px;
+      padding: 15px;
+    }
+
+    .lap-title {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #111827;
+    }
+
+    .lap-info {
+      display: grid;
+      gap: 6px;
+      font-size: 14px;
+      color: #4b5563;
+    }
+
+    .lap-time {
+      margin-top: 8px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #2563eb;
+    }
+
+    .empty {
+      text-align: center;
+      color: #9ca3af;
+      padding: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="counter">
+
+    <h1>Lap 計數器</h1>
+
+    <div id="count" class="count">0</div>
+
+    <div class="setting">
+      <label for="step">每次增加 / 減少</label>
+      <input
+        id="step"
+        type="number"
+        value="1"
+        min="1"
+        step="1"
+      >
+    </div>
+
+    <div class="buttons">
+      <button class="minus" onclick="decrease()">−</button>
+      <button class="plus" onclick="increase()">＋</button>
+    </div>
+
+    <button class="reset" onclick="resetCounter()">
+      Reset 重設
+    </button>
+
+    <div class="lap-section">
+      <h2>Lap 紀錄</h2>
+
+      <div id="lapList" class="lap-list">
+        <div id="emptyMessage" class="empty">
+          尚無 Lap 紀錄
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let count = 0;
+
+    // 儲存所有 Lap
+    let laps = [];
+
+    // Reset / 頁面載入的時間
+    let lastLapTime = new Date();
+
+
+    // =========================================
+    // 取得使用者設定的增減數值
+    // =========================================
+    function getStep() {
+
+      const stepInput = document.getElementById("step");
+
+      let step = parseInt(stepInput.value);
+
+      if (isNaN(step) || step < 1) {
+        step = 1;
+        stepInput.value = 1;
+      }
+
+      return step;
+    }
+
+
+    // =========================================
+    // 按下 +
+    // =========================================
+    function increase() {
+
+      const step = getStep();
+
+      // 增加計數
+      count += step;
+
+      // 這一圈結束的時間
+      const endTime = new Date();
+
+      // 計算這一圈花多少毫秒
+      const duration = endTime - lastLapTime;
+
+      // 建立 Lap 資料
+      const lap = {
+        lapNumber: laps.length + 1,
+        startTime: new Date(lastLapTime),
+        endTime: new Date(endTime),
+        duration: duration,
+        step: step
+      };
+
+      // 放入陣列
+      laps.push(lap);
+
+      // 下一圈從現在開始
+      lastLapTime = endTime;
+
+      updateDisplay();
+      renderLaps();
+    }
+
+
+    // =========================================
+    // 按下 -
+    // =========================================
+    function decrease() {
+
+      // 沒有 Lap 可以刪除
+      if (laps.length === 0) {
+        return;
+      }
+
+      // 取得最後一筆 Lap
+      const removedLap = laps.pop();
+
+      // 使用當時 + 的數值扣回去
+      // 例如當時 +6，按 - 就扣回 6
+      count -= removedLap.step;
+
+      // 防止小於 0
+      if (count < 0) {
+        count = 0;
+      }
+
+      /*
+        刪除上一圈後，
+        計時起點回到被刪除那一圈的開始時間。
+
+        例如：
+
+        Lap 1
+        10:00 → 10:05
+
+        Lap 2
+        10:05 → 10:10
+
+        刪除 Lap 2 後，
+        下一次 + 就會從 10:05 開始計算。
+      */
+      lastLapTime = new Date(removedLap.startTime);
+
+      updateDisplay();
+      renderLaps();
+    }
+
+
+    // =========================================
+    // Reset
+    // =========================================
+    function resetCounter() {
+
+      count = 0;
+
+      // 清除全部 Lap
+      laps = [];
+
+      // 重新開始計時
+      lastLapTime = new Date();
+
+      updateDisplay();
+      renderLaps();
+    }
+
+
+    // =========================================
+    // 更新數字
+    // =========================================
+    function updateDisplay() {
+
+      document.getElementById("count").textContent = count;
+
+    }
+
+
+    // =========================================
+    // 顯示 Lap
+    // =========================================
+    function renderLaps() {
+
+      const lapList = document.getElementById("lapList");
+
+      lapList.innerHTML = "";
+
+      // 沒有 Lap
+      if (laps.length === 0) {
+
+        lapList.innerHTML = `
+          <div class="empty">
+            尚無 Lap 紀錄
+          </div>
+        `;
+
+        return;
+      }
+
+
+      // 每一圈建立一個 div
+      laps.forEach((lap) => {
+
+        const div = document.createElement("div");
+
+        div.className = "lap";
+
+        div.innerHTML = `
+          <div class="lap-title">
+            第 ${lap.lapNumber} 圈
+          </div>
+
+          <div class="lap-info">
+
+            <div>
+              開始時間：
+              ${formatDateTime(lap.startTime)}
+            </div>
+
+            <div>
+              結束時間：
+              ${formatDateTime(lap.endTime)}
+            </div>
+
+            <div class="lap-time">
+              本圈耗時：
+              ${formatDuration(lap.duration)}
+            </div>
+
+          </div>
+        `;
+
+        lapList.appendChild(div);
+
+      });
+
+    }
+
+
+    // =========================================
+    // 日期時間格式
+    // =========================================
+    function formatDateTime(date) {
+
+      const hours =
+        String(date.getHours()).padStart(2, "0");
+
+      const minutes =
+        String(date.getMinutes()).padStart(2, "0");
+
+      const seconds =
+        String(date.getSeconds()).padStart(2, "0");
+
+      const milliseconds =
+        String(date.getMilliseconds()).padStart(3, "0");
+
+      return `${hours}:${minutes}:${seconds}.${milliseconds}`;
+    }
+
+
+    // =========================================
+    // 耗時格式
+    // =========================================
+    function formatDuration(ms) {
+
+      const totalSeconds = Math.floor(ms / 1000);
+
+      const hours =
+        Math.floor(totalSeconds / 3600);
+
+      const minutes =
+        Math.floor((totalSeconds % 3600) / 60);
+
+      const seconds =
+        totalSeconds % 60;
+
+      const milliseconds =
+        ms % 1000;
+
+      return (
+        String(hours).padStart(2, "0")
+        + ":"
+        + String(minutes).padStart(2, "0")
+        + ":"
+        + String(seconds).padStart(2, "0")
+        + "."
+        + String(milliseconds).padStart(3, "0")
+      );
+    }
+
+  </script>
+
+</body>
+</html>
+
+
